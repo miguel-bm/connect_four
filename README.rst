@@ -26,7 +26,7 @@ Python module for simulating games of Connect Four.
 Features
 --------
 
-* TODO
+* Python class for simulating games of Connect Four
 
 Credits
 -------

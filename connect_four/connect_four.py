@@ -1,6 +1,8 @@
 """Main module."""
 
 import numpy as np
+import click
+import sys
 
 
 class ConnectFourGame:
@@ -11,9 +13,7 @@ class ConnectFourGame:
     COLUMNS = 7
     CONNECT = 4
     
-    def __init__(self, player1,
-                       player2,
-                       n_lines=LINES,
+    def __init__(self, n_lines=LINES,
                        n_columns=COLUMNS,
                        n_connect=CONNECT):
         
@@ -59,21 +59,21 @@ class ConnectFourGame:
         
         # Check horizontal line
         h = self.n_columns - self.n_connect + 1
-        win = np.any(np.all([self.state[:, i:i+h]==player for i in layers], axis=2))
+        win = np.any(np.all([self.state[:, i:i+h]==player for i in layers], axis=0))
         if win: return True
         
         # Check vertical line
         v = self.n_lines - self.n_connect + 1
-        win = np.any(np.all([self.state[i:i+v, :]==player for i in layers], axis=2))
+        win = np.any(np.all([self.state[i:i+v, :]==player for i in layers], axis=0))
         if win: return True
         
         # Check first diagonal
-        win = np.any(np.all([self.state[i:i+v, i:i+h]==player for i in layers], axis=2))
+        win = np.any(np.all([self.state[i:i+v, i:i+h]==player for i in layers], axis=0))
         if win: return True
         
         # Check second diagonal
         l = self.n_lines
-        win = np.any(np.all([self.state[l-i-v:l-i, i:i+h]==player for i in layers], axis=2))
+        win = np.any(np.all([self.state[l-i-v:l-i, i:i+h]==player for i in layers], axis=0))
         if win: return True
          
         return False
@@ -137,4 +137,94 @@ class ConnectFourGame:
         revert_history = self.history.copy()  # Create a history vector without the last move
         revert_history[self.num_moves-1] = 0
         return self.set_game(revert_history) # Set game history to reverted history
+
+
+class HumanPlayer():
+    def __init__(self):
+        pass
+    def play(self, game, execute_play=True, verbose=False):
+        possible_choices = np.append(game.possible_moves(), -1).flatten()
+        if verbose:
+            click.echo("Current player: Player "+str(game.next_player))
+            move = ask_for_prompt(choice_list=possible_choices,
+                                  choice_name="Column", 
+                                  error_message="Invalid choice! Please try again. ")
+        choice = int(move)
+        if execute_play:
+            if choice == -1:
+                game.revert_move()
+            else:
+                game.move(choice)
+        return choice
     
+
+class RandomPlayer():
+    def __init__(self):
+        pass
+    def play(self, game, execute_play=True, verbose=False):
+        choice = np.random.choice(game.possible_moves())
+        if verbose:
+            click.echo("Current player: Player "+str(game.next_player))
+            click.echo("Column: "+str(choice))
+        if execute_play:
+            game.move(choice)
+        return choice
+
+
+def ask_for_choices(choice_list, 
+                    choice_name="Choice", 
+                    header="", 
+                    error_message=""):
+    """Print a list of options and ask to select one by number."""
+    
+    valid_choices = list(map(str, range(1, 1+len(choice_list))))
+    options = list(choice_list.keys())
+    prompt_return = False
+    invalid_choice = False
+    while not prompt_return:
+        click.echo(header)
+        for i, option in enumerate(options):
+            click.echo(f" {i+1} - {choice_list[option]}")  # Print options
+        if invalid_choice:
+            prompt = f"{error_message}{choice_name}"
+        else:
+            prompt = choice_name
+        prompt_return = click.prompt(prompt)  # Ask for an integer associated to an option
+        if prompt_return not in valid_choices:
+            invalid_choice = True
+            prompt_return = False
+            delete_last_lines(2+len(valid_choices))
+        else:
+            return options[int(prompt_return)-1]
+    
+    
+def ask_for_prompt(choice_list, 
+                   choice_name, 
+                   error_message=""):
+    """Prompt user for input from a given list of options."""
+    
+    valid_choices = list(map(str, choice_list))
+    options = choice_list
+    prompt_return = False
+    invalid_choice = False
+    while not prompt_return:
+        if invalid_choice:
+            prompt = f"{error_message}{choice_name}"
+        else:
+            prompt = choice_name
+        prompt_return = click.prompt(prompt)
+        if prompt_return not in valid_choices:
+            invalid_choice = True
+            prompt_return = False
+            delete_last_lines(1)
+        else:
+            return prompt_return
+    
+
+def delete_last_lines(n=1):
+    """Delete last n lines in the console output."""
+    CURSOR_UP_ONE = '\x1b[1A'
+    ERASE_LINE = '\x1b[2K'
+    for _ in range(n):
+        sys.stdout.write(CURSOR_UP_ONE)
+        sys.stdout.write(ERASE_LINE)
